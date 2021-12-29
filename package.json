@@ -1,0 +1,19 @@
+{
+  "name": "fleature_js",
+  "version": "0.0.1",
+  "description": "JS client for Fleature.com",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "build": "esbuild index.js --platform=node --bundle --outfile=index.bundled.js"
+  },
+  "author": "Brian Berlin",
+  "license": "ISC",
+  "devDependencies": {
+    "dotenv": "^10.0.0",
+    "esbuild": "^0.14.9",
+    "esbuild-jest": "^0.5.0",
+    "jest": "^27.4.5",
+    "phoenix": "^1.6.5"
+  }
+}
