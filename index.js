@@ -1,71 +1,80 @@
 import { Socket } from 'phoenix'
+import EventEmitter from 'events'
 
-class Fleature {
-  featureFlags = {}
-  
-  get socketOpts() {
-    return {
-      params: {
-        client_id: this.clientId,
-        client_secret: this.clientSecret
-      }
+const eventEmitter = new EventEmitter()
+
+let featureFlags = {}
+
+function setup(opts) {
+  const protocol = opts.protocol || 'wss'
+  const host = opts.host || 'fleature-web.fly.dev'
+  const port = opts.port || 443
+  const topic = `client:${opts.clientId}`
+  const socketUrl = `${protocol}://${host}:${port}/clients`
+
+  const socketOpts = {
+    params: {
+      client_id: opts.clientId,
+      client_secret: opts.clientSecret
     }
   }
 
-  get socketUrl() { 
-    return `${this.protocol}://${this.host}:${this.port}/clients`
-  }
+  const socket = new Socket(socketUrl, socketOpts)
+
+  socket.connect()
   
-  get topic() { 
-    return `client:${this.clientId}`
-  }
+  const channel = socket.channel(topic, {})
 
-  setup(opts) {
-    this._parseOptions(opts)
-    this._setupSocket()
+  channel.on("update_all", newFeatureFlags => featureFlags = newFeatureFlags)
 
-    for (let flag of opts.enabledFlags) {
-      this.enable(flag)
+  channel.on("update_one", ({key, value}) => {
+    if (featureFlags[key] !== value) {
+      eventEmitter.emit(key, value)
     }
-  }
+    featureFlags[key] = value
+  })
 
-  isEnabled(name) {
-    return this.featureFlags[name] === true
-  }
+  channel.join()
 
-  enable(name) {
-    this.featureFlags[name] = true
-  }
-
-  disable(name) {
-    this.featureFlags[name] = false
-  }
-
-  _setupSocket() {
-    this.socket = new Socket(this.socketUrl, this.socketOpts)
-    this.socket.connect()
-    this.channel = this.socket.channel(this.topic, {})
-
-    this.channel.on("update_all", featureFlags => this.featureFlags = featureFlags)
-
-    this.channel.on("update_one", featureFlags => {
-      for (let flag in featureFlags) {
-        this.featureFlags[flag] = featureFlags[flag]
-      }
-    })
-
-    this.channel.join()
-  }
-
-  _parseOptions(opts) {
-    this.clientId = opts.clientId
-    this.clientSecret = opts.clientSecret
-    this.protocol = opts.protocol || 'wss'
-    this.host = opts.host || "fleature-web.fly.dev"
-    this.port = opts.port || 443
+  for (let flag of opts.enabledFlags) {
+    enable(flag)
   }
 }
 
-const fleature = new Fleature()
+function isEnabled(name) {
+  return featureFlags[name] === true
+}
+
+function enable(name) {
+  featureFlags[name] = true
+}
+
+function disable(name) {
+  featureFlags[name] = false
+}
+
+function addListener(key, callback) {
+  eventEmitter.on(key, callback)
+}
+
+function removeListener(key, callback) {
+  eventEmitter.removeListener(key, callback)
+}
+
+function removeAllListeners(key) {
+  eventEmitter.removeAllListeners(key)
+}
+
+const fleature = {
+  setup,
+  isEnabled,
+  enable,
+  disable,
+  addListener,
+  removeListener,
+  removeAllListeners
+}
+
+Object.freeze(fleature)
 
 export default fleature
