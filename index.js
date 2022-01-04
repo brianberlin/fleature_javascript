@@ -1,11 +1,15 @@
 import { Socket } from 'phoenix'
 
+let usage = {}
+
 let featureFlags = {}
 
 let subscribers = {
   flag: {},
   all: []
 }
+
+let channel
 
 function setup(opts) {
   const protocol = opts.protocol || 'wss'
@@ -25,7 +29,7 @@ function setup(opts) {
 
   socket.connect()
   
-  const channel = socket.channel(topic, {})
+  channel = socket.channel(topic, {})
 
   channel.on("update_all", newFeatureFlags => {
     featureFlags = newFeatureFlags
@@ -42,9 +46,12 @@ function setup(opts) {
   for (let flag of opts.enabledFlags) {
     enable(flag)
   }
+
+  setInterval(sendUsageData, 10000)
 }
 
 function isEnabled(name) {
+  usage[name]++
   return featureFlags[name] === true
 }
 
@@ -80,6 +87,11 @@ function subscribe(name, callback) {
       subscribers.flag[name].splice(index, 1)
     }
   }
+}
+
+function sendUsageData() {
+  channel.push("usage", usage)
+  usage = {}
 }
 
 const fleature = {
