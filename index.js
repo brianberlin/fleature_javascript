@@ -1,9 +1,11 @@
 import { Socket } from 'phoenix'
-import EventEmitter from 'events'
-
-const eventEmitter = new EventEmitter()
 
 let featureFlags = {}
+
+let subscribers = {
+  flag: {},
+  all: []
+}
 
 function setup(opts) {
   const protocol = opts.protocol || 'wss'
@@ -25,13 +27,14 @@ function setup(opts) {
   
   const channel = socket.channel(topic, {})
 
-  channel.on("update_all", newFeatureFlags => featureFlags = newFeatureFlags)
+  channel.on("update_all", newFeatureFlags => {
+    featureFlags = newFeatureFlags
+    subscribers.all.forEach(callback => callback(newFeatureFlags))
+  })
 
-  channel.on("update_one", ({key, value}) => {
-    if (featureFlags[key] !== value) {
-      eventEmitter.emit(key, value)
-    }
-    featureFlags[key] = value
+  channel.on("update_one", ({name, status}) => {
+    const callbacks = subscribers.flag[name] || []
+    callbacks.forEach(subscriber => subscriber(status))
   })
 
   channel.join()
@@ -53,16 +56,30 @@ function disable(name) {
   featureFlags[name] = false
 }
 
-function addListener(key, callback) {
-  eventEmitter.on(key, callback)
+function subscribeAll(callback) {
+  const currentSubscribers = subscribers.all || []
+  currentSubscribers.push(callback)
+  subscribers.all = currentSubscribers
+
+  return () => {
+    const index = subscribers.all.indexOf(callback)
+    if (index > -1) {
+      subscribers.all.splice(index, 1)
+    }
+  }
 }
 
-function removeListener(key, callback) {
-  eventEmitter.removeListener(key, callback)
-}
+function subscribe(name, callback) {
+  const currentSubscribers = subscribers.flag[name] || []
+  currentSubscribers.push(callback)
+  subscribers.flag[name] = currentSubscribers
 
-function removeAllListeners(key) {
-  eventEmitter.removeAllListeners(key)
+  return () => {
+    const index = subscribers.flag[name].indexOf(callback)
+    if (index > -1) {
+      subscribers.flag[name].splice(index, 1)
+    }
+  }
 }
 
 const fleature = {
@@ -70,9 +87,8 @@ const fleature = {
   isEnabled,
   enable,
   disable,
-  addListener,
-  removeListener,
-  removeAllListeners
+  subscribe,
+  subscribeAll
 }
 
 Object.freeze(fleature)

@@ -1,0 +1,35 @@
+on:
+  push:
+    tags: ['v*.*.*']
+
+jobs:
+  deploy:
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Restore dependencies cache
+        uses: actions/cache@v2
+        id: cache
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      - name: Setup Node
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+      - name: Install Dependencies
+        if: steps.mix-cache.outputs.cache-hit != 'true'
+        run: npm install
+      - name: Run Tests
+        run: npm test
+      - name: Create Bundle
+        run: npm run build
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: index.bundled.js
