@@ -5,16 +5,17 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "build": "esbuild index.js --platform=node --bundle --outfile=index.bundled.js"
+    "build": "esbuild index.js --platform=node --bundle --outfile=index.bundled.js",
+    "watch": "esbuild index.js --platform=node --watch --bundle --outfile=index.bundled.js"
   },
   "author": "Brian Berlin",
   "license": "ISC",
   "devDependencies": {
-    "dotenv": "^10.0.0",
     "esbuild-jest": "^0.5.0",
     "esbuild": "^0.14.9",
-    "events": "^3.3.0",
-    "jest": "^27.4.5",
-    "phoenix": "^1.6.5"
+    "jest": "^27.4.5"
+  },
+  "dependencies": {
+    "tab-election": "^2.0.3"
   }
 }

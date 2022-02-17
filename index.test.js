@@ -1,6 +1,11 @@
 import fleature from './index'
 
 test('enabled and disabled flags', () => {
+    global.fetch = () => ({ json: () => { } })
+    global.EventSource = function () {
+        return { addEventListener: jest.fn() }
+    }
+
     fleature.setup({
         enabledFlags: ['enabled_flag'],
     })
